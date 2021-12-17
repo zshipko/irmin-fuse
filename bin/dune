@@ -1,0 +1,4 @@
+(executable
+  (name irmin_fuse)
+  (public_name irmin-fuse)
+  (libraries irmin-fuse irmin-unix))
