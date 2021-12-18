@@ -8,7 +8,7 @@ let default_stats = LargeFile.stat "."
 
 module Make
     (Store : Irmin.Generic_key.S)
-    (C : Conf with type contents := Store.contents) =
+    (C : Conf with type contents := Store.contents and type step := Store.step) =
 struct
   let store =
     let* repo = Store.Repo.v C.config in
@@ -56,13 +56,8 @@ struct
     Lwt_main.run
       (let* store in
        let path = Irmin.Type.of_string Store.Path.t p |> Result.get_ok in
-       let+ v = Store.find store path in
-       match v with
-       | None -> raise (Unix_error (ENOENT, "open", p))
-       | Some x ->
-           let _b = Store.Contents.hash x in
-           None
-       (*Some (Store.Hash.short_hash b))*))
+       let+ v = Store.mem store path in
+       if v then None else raise (Unix_error (ENOENT, "open", p)))
 
   let do_read p buf ofs _ =
     Lwt_main.run
@@ -75,12 +70,12 @@ struct
            if ofs > Int64.of_int max_int then Lwt.return 0
            else
              let x = C.string_of_contents x in
-             let len = String.length x in
              let ofs = Int64.to_int ofs in
-             String.iteri
-               (fun i x -> buf.{i} <- x)
-               (String.sub x ofs (len - ofs));
-             Lwt.return (len - ofs))
+             let len = String.length x - ofs in
+             let () =
+               Bigstringaf.blit_from_string ~src_off:ofs x buf ~dst_off:0 ~len
+             in
+             Lwt.return len)
 
   let main args : unit =
     Fuse.(

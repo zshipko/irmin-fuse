@@ -25,6 +25,7 @@ let main ~readonly ~root ~store ~contents ~hash ~config_path ~mount_path =
       (struct
         let config = config
         let string_of_contents = string_of_contents
+        let string_of_step (s : Store.step) = Obj.magic s
       end)
   in
   F.main [| "irmin-fuse"; mount_path |]
